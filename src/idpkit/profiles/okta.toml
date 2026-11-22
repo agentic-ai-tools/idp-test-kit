@@ -1,0 +1,27 @@
+name = "okta"
+display = "Okta (custom authorization server)"
+# domain e.g. integrator-1234567.okta.com; auth_server e.g. default; scope must exist on the
+# authorization server and be granted to the client by an access policy.
+discovery_url = "https://{domain}/oauth2/{auth_server}/.well-known/openid-configuration"
+token_url = "https://{domain}/oauth2/{auth_server}/v1/token"
+auth = "basic"
+fields = ["domain", "auth_server", "client_id", "client_secret", "scope"]
+params = { scope = "{scope}" }
+verified = false
+notes = """
+The client is named in cid (not client_id or azp), scopes are an scp array, and aud is the
+authorization server's Audience setting. Free tenants: Integrator Free Plan (Developer
+Edition retired in 2025).
+"""
+sources = [
+  "https://developer.okta.com/docs/api/openapi/okta-oauth/guides/overview",
+  "https://developer.okta.com/docs/guides/customize-authz-server/main",
+  "https://developer.okta.com/blog/2025/05/13/okta-developer-edition-changes",
+]
+
+[shape]
+client_claim = "cid"
+audience = true
+scope_claim = "scp"
+scope_format = "list"
+extra = { ver = 1 }

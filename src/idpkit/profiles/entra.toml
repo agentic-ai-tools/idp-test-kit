@@ -1,0 +1,27 @@
+name = "entra"
+display = "Microsoft Entra ID (v2.0 endpoint, app-only token)"
+# tenant = tenant ID (GUID) or domain; scope = "api://<api-app-id>/.default". The API app
+# registration must set accessTokenAcceptedVersion = 2, or tokens come back as v1
+# (iss sts.windows.net, appid instead of azp).
+discovery_url = "https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration"
+token_url = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+auth = "post"
+fields = ["tenant", "client_id", "client_secret", "scope"]
+params = { scope = "{scope}" }
+verified = false
+notes = """
+v2 tokens: aud is the API's client ID (GUID), azp names the calling client (no client_id
+claim), and app-only tokens carry application permissions in roles; scp appears only in
+delegated (user) tokens.
+"""
+sources = [
+  "https://learn.microsoft.com/en-us/entra/identity-platform/access-token-claims-reference",
+  "https://learn.microsoft.com/entra/identity-platform/claims-validation",
+]
+
+[shape]
+client_claim = "azp"
+audience = true
+scope_claim = "roles"
+scope_format = "list"
+extra = { ver = "2.0", idtyp = "app" }

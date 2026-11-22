@@ -1,0 +1,28 @@
+name = "keycloak"
+display = "Keycloak (service-account client)"
+# base_url = the public https URL (stacks/keycloak prints a cloudflared one), realm e.g. idpkit.
+discovery_url = "{base_url}/realms/{realm}/.well-known/openid-configuration"
+token_url = "{base_url}/realms/{realm}/protocol/openid-connect/token"
+auth = "post"
+fields = ["base_url", "realm", "client_id", "client_secret"]
+params = {}
+verified = true
+verified_on = "2026-11-22"
+notes = """
+Confirmed with Keycloak 26.4 (stacks/keycloak, fixtures/claims/keycloak/): service-account
+tokens carry the client in both client_id and azp, aud defaults to "account", and an
+Audience mapper with a custom audience adds that value (aud becomes a list). scope is a
+space-separated string ("profile email" by default).
+"""
+sources = [
+  "https://www.keycloak.org/docs-api/26.8.2/javadocs/org/keycloak/protocol/oidc/mappers/AudienceResolveProtocolMapper.html",
+  "https://dev.to/metacosmos/how-to-configure-audience-in-keycloak-kp4",
+]
+
+[shape]
+client_claim = "client_id"
+also_client_claims = ["azp"]
+audience = true
+scope_claim = "scope"
+scope_format = "string"
+extra = { typ = "Bearer" }

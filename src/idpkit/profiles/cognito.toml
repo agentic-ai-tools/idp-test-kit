@@ -1,0 +1,27 @@
+name = "cognito"
+display = "Amazon Cognito (user pool, client credentials)"
+# region e.g. us-east-1; pool_id e.g. us-east-1_AbC123; domain = the user pool domain,
+# e.g. my-pool.auth.us-east-1.amazoncognito.com; scope = "<resource-server-id>/<scope>".
+discovery_url = "https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
+token_url = "https://{domain}/oauth2/token"
+auth = "basic"
+fields = ["region", "pool_id", "domain", "client_id", "client_secret", "scope"]
+params = { scope = "{scope}" }
+verified = false
+notes = """
+Client-credentials access tokens name the app client in client_id and carry no aud unless
+the token is bound to a resource (inferred from the docs; confirm with a captured token).
+M2M token requests are billed per successful request: cache tokens.
+"""
+sources = [
+  "https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-access-token.html",
+  "https://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html",
+  "https://aws.amazon.com/cognito/pricing/",
+]
+
+[shape]
+client_claim = "client_id"
+audience = false
+scope_claim = "scope"
+scope_format = "string"
+extra = { token_use = "access" }
