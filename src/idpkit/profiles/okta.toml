@@ -11,12 +11,16 @@ verified = false
 notes = """
 The client is named in cid (not client_id or azp), scopes are an scp array, and aud is the
 authorization server's Audience setting. Free tenants: Integrator Free Plan (Developer
-Edition retired in 2025).
+Edition retired in 2025). Client Credentials in access policy rules may require an NHI
+Authentication Token subscription (Okta help, 2026-08-14); Integrator Free orgs report the
+option missing.
 """
 sources = [
   "https://developer.okta.com/docs/api/openapi/okta-oauth/guides/overview",
   "https://developer.okta.com/docs/guides/customize-authz-server/main",
   "https://developer.okta.com/blog/2025/05/13/okta-developer-edition-changes",
+  "https://help.okta.com/oie/en-us/Content/Topics/Security/api-config-access-policies.htm",
+  "https://devforum.okta.com/t/client-credentials-grant-type-not-shown-in-access-policy-rule-on-an-integrator-free-plan-org/35522",
 ]
 
 [shape]
