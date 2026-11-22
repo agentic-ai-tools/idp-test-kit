@@ -50,6 +50,10 @@ idpkit inspect --profile <profile> --aud <audience> --client <client-id> --scope
 idpkit capture <profile>        # when it looks right: masked fixture for the repo
 ```
 
+No machine tokens on your plan? Add `--device` to `token`, `inspect` or `capture`.
+It shows a link and a code; you approve in a browser and get a *user* token instead
+(see the Okta section).
+
 `inspect` ends with one line per validator, for example:
 
 ```
@@ -304,6 +308,43 @@ clients work on Docker (`azp`), not on AgentCore.
 > **Confirmed 2026-11-22:** on an Integrator Free org, the rule's *Core grants* list only
 > **Authorization Code** and **Device Authorization**. Those grants need a human to sign
 > in, so this org cannot issue machine tokens.
+
+### Okta on the free plan: use the device flow instead
+
+The free org can't issue machine tokens, but it *can* issue a token to **you** through the
+**Device Authorization** grant: `idpkit` shows a code, you approve it in a browser, and it
+receives a user token from the same authorization server. That token uses the same claim
+names (`cid`, `scp`, `aud`), which is what MCP Wizard's settings depend on. It also
+carries user claims (`uid`, and your login in `sub`).
+
+1. **Scope**: as in step 2 below, add **`mcp.read`** to the `default` authorization server.
+2. **The caller is a native app here.** *Applications* > *Create App Integration* >
+   **OIDC - OpenID Connect** > **Native Application**, name `idpkit-device`.
+   - Under *Grant type*, tick **Device Authorization**.
+   - *Client authentication*: **None**. It is a public client, so there is no secret.
+   - *Assignments*: assign it to yourself, or allow everyone in the org.
+   - Copy its **Client ID**.
+3. **Access policy**: on the `default` server > *Access Policies*, add a policy assigned
+   to `idpkit-device` with a rule:
+   - *Core grants*: **Device Authorization**
+   - *User is*: any user assigned the app
+   - *Scopes*: `openid` and `mcp.read` (or *Any scopes*)
+4. **`.env`**: no secret for a public client.
+
+   ```
+   IDPKIT_OKTA_DOMAIN=integrator-1234567.okta.com
+   IDPKIT_OKTA_AUTH_SERVER=default
+   IDPKIT_OKTA_CLIENT_ID=0oaDeviceAppId
+   IDPKIT_OKTA_DEVICE_SCOPE=openid mcp.read
+   ```
+
+5. **Run** `idpkit inspect --profile okta --device --aud api://default --scope mcp.read`.
+   It prints a link and a code. Open the link, sign in, confirm the code, and the claims
+   appear. Then `idpkit capture okta --device --name device-user`.
+
+The device flow works the same way for Entra, Auth0 and Keycloak, if you enable it there.
+
+### Okta with client credentials (paid or NHI-enabled orgs)
 
 **Before you start**: sign up at developer.okta.com and choose **Integrator Free Plan**
 (not *Trial*). Your org domain looks like `integrator-1234567.okta.com`.

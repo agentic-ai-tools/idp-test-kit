@@ -68,3 +68,30 @@ def test_token_hides_the_token_unless_asked(monkeypatch, tmp_path):
     assert "cached" in hidden.output
     shown = runner.invoke(app, ["token", "auth0", "--env-file", str(env), "--show-token"])
     assert "secret-token" in shown.output
+
+
+def test_token_device_flow_prompts_and_hides_the_token(monkeypatch, tmp_path):
+    from idpkit import cli
+    from idpkit.discovery import DiscoveryReport
+    from idpkit.tokens import TokenResult
+
+    def fake_device(profile, values, *, discovery, on_prompt, **kwargs):
+        assert discovery["token_endpoint"] == "https://idp/token"
+        on_prompt("https://idp/activate?user_code=AB-12", "AB-12")
+        return TokenResult("user-token", 9e9, from_cache=False)
+
+    report = DiscoveryReport(
+        url="u", document={"issuer": "https://idp", "token_endpoint": "https://idp/token"}
+    )
+    monkeypatch.setattr(cli, "check_discovery", lambda *a, **k: report)
+    monkeypatch.setattr(cli, "request_device_token", fake_device)
+    env = tmp_path / ".env"
+    env.write_text(
+        "IDPKIT_OKTA_DOMAIN=idp\nIDPKIT_OKTA_AUTH_SERVER=default\nIDPKIT_OKTA_CLIENT_ID=c\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["token", "okta", "--device", "--env-file", str(env)])
+    assert result.exit_code == 0, result.output
+    assert "https://idp/activate?user_code=AB-12" in result.output
+    assert "AB-12" in result.output
+    assert "user-token" not in result.output

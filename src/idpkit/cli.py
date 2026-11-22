@@ -16,7 +16,7 @@ from idpkit.inspect import claim_rows, inspect_token
 from idpkit.mock import MockIssuer
 from idpkit.probe import mock_cases, real_cases, run_probe
 from idpkit.profiles import all_profiles, load_profile, render
-from idpkit.tokens import TokenCache, request_token
+from idpkit.tokens import TokenCache, TokenResult, request_device_token, request_token
 from idpkit.validators import Requirements, evaluate
 
 app = typer.Typer(help=__doc__, no_args_is_help=True, add_completion=False)
@@ -26,15 +26,39 @@ AllowHttp = Annotated[bool, typer.Option("--allow-http", help="Accept http:// (l
 Audience = Annotated[list[str], typer.Option("--aud", help="Allowed audience (repeatable).")]
 Client = Annotated[list[str], typer.Option("--client", help="Allowed client (repeatable).")]
 Scope = Annotated[list[str], typer.Option("--scope", help="Required scope (repeatable).")]
+Device = Annotated[
+    bool,
+    typer.Option("--device", help="Device flow: approve in a browser (user token, no M2M)."),
+]
 MOCK_KEY = Path(".idpkit/mock-key.pem")
 
 
-def _token_for(profile_name: str, env_file: Path) -> tuple[str, str]:
+def _prompt(uri: str, code: str) -> None:
+    typer.echo(f"Open {uri}")
+    typer.echo(f"and confirm the code {code}. Waiting for approval...")
+
+
+def _get_token(
+    profile_name: str, env_file: Path, *, device: bool = False, allow_http: bool = False
+) -> tuple[TokenResult, str]:
     """(token, discovery URL) for a profile, from the cache or the provider."""
     profile = load_profile(profile_name)
     values = profile_values(profile.name, load_env(env_file))
-    token = request_token(profile, values, cache=TokenCache())
-    return token.access_token, render(profile.discovery_url, values, profile=profile.name)
+    discovery = render(profile.discovery_url, values, profile=profile.name)
+    if not device:
+        return request_token(profile, values, cache=TokenCache()), discovery
+    report = check_discovery(discovery, allow_http=allow_http)
+    result = request_device_token(
+        profile, values, discovery=report.document, on_prompt=_prompt, cache=TokenCache()
+    )
+    return result, discovery
+
+
+def _token_for(
+    profile_name: str, env_file: Path, *, device: bool = False, allow_http: bool = False
+) -> tuple[str, str]:
+    result, discovery = _get_token(profile_name, env_file, device=device, allow_http=allow_http)
+    return result.access_token, discovery
 
 
 @app.command()
@@ -62,12 +86,15 @@ def token(
     profile: str,
     env_file: EnvFile = Path(".env"),
     show_token: Annotated[bool, typer.Option("--show-token")] = False,
+    device: Device = False,
+    allow_http: AllowHttp = False,
 ) -> None:
-    """Get a client-credentials token (cached until a minute before it expires)."""
-    prof = load_profile(profile)
-    result = request_token(prof, profile_values(prof.name, load_env(env_file)), cache=TokenCache())
+    """Get a token (client credentials, or --device), cached until near expiry."""
+    result, _ = _get_token(profile, env_file, device=device, allow_http=allow_http)
     left = int(result.expires_at - time.time())
-    typer.echo(f"{prof.name}: {'cached' if result.from_cache else 'new'} token, {left}s left")
+    kind = "device" if device else "client-credentials"
+    state = "cached" if result.from_cache else "new"
+    typer.echo(f"{profile}: {state} {kind} token, {left}s left")
     if show_token:
         typer.echo(result.access_token)
 
@@ -82,12 +109,13 @@ def inspect(
     aud: Audience = [],  # noqa: B006 - typer reads the default
     client: Client = [],  # noqa: B006
     scope: Scope = [],  # noqa: B006
+    device: Device = False,
 ) -> None:
     """Show a token's claims and which validators would accept it."""
     if token is None and profile is None:
         raise typer.BadParameter("pass a token or --profile")
     if token is None:
-        token, discovery = _token_for(profile or "", env_file)
+        token, discovery = _token_for(profile or "", env_file, device=device, allow_http=allow_http)
     result = inspect_token(token, discovery_url=discovery, allow_http=allow_http)
     width = max((len(k) for k, _ in claim_rows(result.claims)), default=0)
     for name, value in claim_rows(result.claims):
@@ -110,9 +138,10 @@ def capture(
     out: Annotated[Path, typer.Option(help="Fixture folder.")] = Path("fixtures/claims"),
     env_file: EnvFile = Path(".env"),
     allow_http: AllowHttp = False,
+    device: Device = False,
 ) -> None:
     """Save a sanitized claim set from a real token as a committed fixture."""
-    token, discovery = _token_for(profile, env_file)
+    token, discovery = _token_for(profile, env_file, device=device, allow_http=allow_http)
     result = inspect_token(token, discovery_url=discovery, allow_http=allow_http)
     if not result.signature_ok or result.problems:
         typer.echo(f"refusing to capture an unverified token: {result.problems}")

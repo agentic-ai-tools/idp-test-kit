@@ -22,7 +22,7 @@ cp .env.example .env                  # tenant settings, never committed
 |---|---|
 | `idpkit profiles` | Provider profiles and whether a real token confirmed them |
 | `idpkit discover URL` | Checks a discovery document: https, issuer match, JWKS |
-| `idpkit token PROFILE` | Client-credentials token, cached until a minute before expiry |
+| `idpkit token PROFILE [--device]` | Client-credentials token (or a user token via the device flow), cached until near expiry |
 | `idpkit inspect [TOKEN] [--profile P] --aud A --client C --scope S` | Claims, signature check, and which validators would accept it |
 | `idpkit capture PROFILE` | Sanitized claim set -> `fixtures/claims/PROFILE/` (identifiers masked) |
 | `idpkit mock --shape P` | Local issuer minting tokens shaped like provider P |

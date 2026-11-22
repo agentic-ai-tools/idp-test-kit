@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -104,3 +105,93 @@ def request_token(
     if cache is not None:
         cache.put(key, result)
     return result
+
+
+DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
+
+
+def request_device_token(
+    profile: Profile,
+    values: dict[str, str],
+    *,
+    discovery: dict,
+    on_prompt: Callable[[str, str], None],
+    client: httpx.Client | None = None,
+    cache: TokenCache | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+    now: float | None = None,
+) -> TokenResult:
+    """OIDC Device Authorization (RFC 8628): ``on_prompt(uri, user_code)`` asks a person
+    to approve in a browser while this polls the token endpoint.
+
+    Scope: ``device_scope`` if set (Okta wants ``openid`` too), else the profile's scope.
+    A ``client_secret`` is sent only when configured (native apps are public clients).
+    """
+    now = time.time() if now is None else now
+    key = _cache_key(profile, values).replace(f"{profile.name}-", f"{profile.name}-device-", 1)
+    if cache is not None and (cached := cache.get(key, now)) is not None:
+        return cached
+    device_url = discovery.get("device_authorization_endpoint")
+    token_url = discovery.get("token_endpoint")
+    if not isinstance(device_url, str) or not isinstance(token_url, str):
+        raise RuntimeError(
+            f"{profile.name}: the discovery document has no device_authorization_endpoint "
+            "(this provider or authorization server does not offer the device flow)"
+        )
+    client_id = render("{client_id}", values, profile=profile.name)
+    secret = {"client_secret": values["client_secret"]} if values.get("client_secret") else {}
+    params: dict[str, str] = {}
+    for name, template in profile.params.items():
+        try:
+            params[name] = render(template, values, profile=profile.name)
+        except KeyError:
+            continue  # optional for the device flow (e.g. no M2M scope configured)
+    if values.get("device_scope"):
+        params["scope"] = values["device_scope"]
+
+    own = client is None
+    client = client or httpx.Client(timeout=20.0)
+    try:
+        start = client.post(device_url, data={"client_id": client_id, **params, **secret})
+        if start.status_code != 200:
+            raise RuntimeError(f"{profile.name} device authorization failed: {start.text[:200]}")
+        grant = start.json()
+        on_prompt(
+            grant.get("verification_uri_complete") or grant["verification_uri"], grant["user_code"]
+        )
+        interval = float(grant.get("interval", 5))
+        deadline = time.monotonic() + float(grant.get("expires_in", 600))
+        while time.monotonic() < deadline:
+            sleep(interval)
+            reply = client.post(
+                token_url,
+                data={
+                    "grant_type": DEVICE_GRANT,
+                    "device_code": grant["device_code"],
+                    "client_id": client_id,
+                    **secret,
+                },
+            )
+            body = reply.json()
+            if reply.status_code == 200 and "access_token" in body:
+                result = TokenResult(
+                    body["access_token"],
+                    now + float(body.get("expires_in", 300)),
+                    from_cache=False,
+                )
+                if cache is not None:
+                    cache.put(key, result)
+                return result
+            error = body.get("error")
+            if error == "authorization_pending":
+                continue
+            if error == "slow_down":
+                interval += 5
+                continue
+            raise RuntimeError(
+                f"{profile.name} device flow stopped: {error}: {body.get('error_description', '')}"
+            )
+        raise RuntimeError(f"{profile.name} device flow timed out before approval")
+    finally:
+        if own:
+            client.close()
