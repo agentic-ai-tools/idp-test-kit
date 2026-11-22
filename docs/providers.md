@@ -187,8 +187,9 @@ AgentCore.)
 |---|---|
 | `invalid_client` | wrong client ID/secret, or the client has no secret (recreate it as Machine-to-machine) |
 | `unauthorized_client` | client credentials not enabled on the app client |
-| `invalid_scope` | scope not ticked on the app client, or typo (`mcp/read`, with the slash) |
-| connection error | `IDPKIT_COGNITO_DOMAIN` must be the domain host, without `https://` |
+| `invalid_grant` | the scope exists but is not ticked on the app client (*Login pages* > *Custom scopes*) |
+| `invalid_scope` | no such scope: typo, or the resource server is missing (`mcp/read`, with the slash) |
+| connection error | wrong `IDPKIT_COGNITO_DOMAIN` (copy it from the pool's *Domain* page) |
 
 ---
 

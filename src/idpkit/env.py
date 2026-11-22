@@ -26,4 +26,7 @@ def load_env(path: str | Path = ".env") -> dict[str, str]:
 
 def profile_values(profile: str, env: dict[str, str]) -> dict[str, str]:
     prefix = f"IDPKIT_{profile.upper()}_"
-    return {k[len(prefix) :].lower(): v for k, v in env.items() if k.startswith(prefix) and v}
+    values = {k[len(prefix) :].lower(): v for k, v in env.items() if k.startswith(prefix) and v}
+    if "domain" in values:  # templates add https:// themselves; people often paste the URL
+        values["domain"] = values["domain"].removeprefix("https://").rstrip("/")
+    return values

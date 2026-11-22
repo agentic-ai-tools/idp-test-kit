@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Annotated
 
+import httpx
 import typer
 
 from idpkit.capture import write_fixture
@@ -201,3 +202,15 @@ def probe(
         mark = "ok  " if outcome.ok else "FAIL"
         typer.echo(f"{mark} {outcome.case.name:15} expected {outcome.case.expect}, got {got}")
     raise typer.Exit(1 if failed else 0)
+
+
+def main() -> None:
+    """Console entry point: expected failures print one line, not a traceback."""
+    try:
+        app()
+    except (httpx.HTTPError, RuntimeError, ValueError, KeyError) as exc:
+        message = exc.args[0] if isinstance(exc, KeyError) and exc.args else exc
+        typer.echo(f"error: {message}", err=True)
+        if isinstance(exc, httpx.ConnectError):
+            typer.echo("check the domain/region values in .env", err=True)
+        raise SystemExit(1) from None

@@ -134,3 +134,8 @@ def test_capture_drops_client_addresses_and_masks_usernames():
         }
     )
     assert clean == {"preferred_username": "<preferred_username>"}
+
+
+def test_domain_tolerates_a_pasted_url():
+    env = {"IDPKIT_COGNITO_DOMAIN": "https://pool.auth.us-east-1.amazoncognito.com/"}
+    assert profile_values("cognito", env)["domain"] == "pool.auth.us-east-1.amazoncognito.com"

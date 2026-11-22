@@ -95,3 +95,20 @@ def test_token_device_flow_prompts_and_hides_the_token(monkeypatch, tmp_path):
     assert "https://idp/activate?user_code=AB-12" in result.output
     assert "AB-12" in result.output
     assert "user-token" not in result.output
+
+
+def test_main_prints_one_line_errors(monkeypatch, capsys):
+    import httpx
+    import pytest
+
+    from idpkit import cli
+
+    def boom():
+        raise httpx.ConnectError("getaddrinfo failed")
+
+    monkeypatch.setattr(cli, "app", boom)
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+    assert exit_info.value.code == 1
+    err = capsys.readouterr().err
+    assert "error: getaddrinfo failed" in err and ".env" in err

@@ -20,7 +20,7 @@ dependencies = [
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
-idpkit = "idpkit.cli:app"
+idpkit = "idpkit.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/idpkit"]
