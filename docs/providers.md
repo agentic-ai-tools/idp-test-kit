@@ -300,6 +300,10 @@ clients work on Docker (`azp`), not on AgentCore.
 > or after 2026-08-14. Integrator Free users report the option is missing. If you can't
 > select *Client Credentials* in step 4, the free plan can't issue machine tokens. Use
 > `idpkit mock --shape okta` to test the token shape until you have a paid or trial org.
+>
+> **Confirmed 2026-11-22:** on an Integrator Free org, the rule's *Core grants* list only
+> **Authorization Code** and **Device Authorization**. Those grants need a human to sign
+> in, so this org cannot issue machine tokens.
 
 **Before you start**: sign up at developer.okta.com and choose **Integrator Free Plan**
 (not *Trial*). Your org domain looks like `integrator-1234567.okta.com`.

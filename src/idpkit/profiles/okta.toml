@@ -12,8 +12,8 @@ notes = """
 The client is named in cid (not client_id or azp), scopes are an scp array, and aud is the
 authorization server's Audience setting. Free tenants: Integrator Free Plan (Developer
 Edition retired in 2025). Client Credentials in access policy rules may require an NHI
-Authentication Token subscription (Okta help, 2026-08-14); Integrator Free orgs report the
-option missing.
+Authentication Token subscription (Okta help, 2026-08-14). Confirmed 2026-11-22: an
+Integrator Free org offers only Authorization Code and Device Authorization in the rule.
 """
 sources = [
   "https://developer.okta.com/docs/api/openapi/okta-oauth/guides/overview",
