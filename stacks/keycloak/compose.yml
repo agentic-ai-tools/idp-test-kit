@@ -1,0 +1,32 @@
+# Keycloak for idpkit: a realm with one machine-to-machine client, plus an optional
+# cloudflared quick tunnel for an https issuer (resource servers that refuse http).
+#
+#   docker compose -f stacks/keycloak/compose.yml up -d keycloak          # local only
+#   docker compose -f stacks/keycloak/compose.yml --profile tunnel up -d  # + public https
+#   docker compose -f stacks/keycloak/compose.yml logs tunnel | grep trycloudflare
+#
+# The realm and its client secret are test-only and public in this repo. Anyone who
+# knows the tunnel URL can get a token for this throwaway realm, so stop the tunnel
+# when you are done: docker compose -f stacks/keycloak/compose.yml down
+name: idpkit-keycloak
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Behind the tunnel the issuer follows the forwarded https host.
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${IDPKIT_KEYCLOAK_PORT:-8180}:8080"
+    volumes:
+      - ./realm-idpkit.json:/opt/keycloak/data/import/realm-idpkit.json:ro
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://keycloak:8080"]
+    depends_on: [keycloak]

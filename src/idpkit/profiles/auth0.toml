@@ -1,0 +1,25 @@
+name = "auth0"
+display = "Auth0 (API + machine-to-machine application)"
+# domain e.g. acme.us.auth0.com; audience = the API identifier.
+discovery_url = "https://{domain}/.well-known/openid-configuration"
+token_url = "https://{domain}/oauth/token"
+auth = "json"
+fields = ["domain", "client_id", "client_secret", "audience"]
+params = { audience = "{audience}" }
+verified = false
+notes = """
+Expected: azp names the client, gty is client-credentials, aud is the API identifier, scope
+is a string (confirm with a captured token). The Free plan allows 1,000 M2M tokens a month:
+idpkit caches tokens until a minute before they expire.
+"""
+sources = [
+  "https://auth0.com/docs/secure/tokens/access-tokens",
+  "https://community.auth0.com/t/machine-to-machine-authentication-limit-on-free-plan/19365",
+]
+
+[shape]
+client_claim = "azp"
+audience = true
+scope_claim = "scope"
+scope_format = "string"
+extra = { gty = "client-credentials" }

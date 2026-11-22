@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "idp-test-kit"
+version = "0.1.0"
+description = "Test JWT auth against real identity providers: inspect token claims, mock issuers, probe protected endpoints."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Agentic AI Tools" }]
+dependencies = [
+  "pyjwt[crypto]>=2.9",
+  "httpx>=0.27",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+idpkit = "idpkit.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/idpkit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]

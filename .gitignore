@@ -1,0 +1,21 @@
+# Tenant credentials live here, never in git.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Scenario state (Terraform, generated zips, token cache)
+.terraform/
+*.tfstate
+*.tfstate.*
+.idpkit/
+scenarios/**/work/
