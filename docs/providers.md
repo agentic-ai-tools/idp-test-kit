@@ -155,9 +155,21 @@ If the pool already shows a Cognito domain, skip this step and use that one. You
 need a *custom domain*: that is your own hostname, and it needs a certificate and DNS records.
 
 **4. Create the caller (an "app client").** *App clients* > *Create app client* > application
-type **Machine-to-machine application**, name `idpkit-caller`. Select the custom scope
-`mcp/read`. Machine-to-machine clients get a **client secret** and the client credentials
-grant. Copy the **client ID** and **client secret** from the client's page.
+type **Machine-to-machine application**, name `idpkit-caller`. Machine-to-machine clients get
+a **client secret** and the client credentials grant. Copy the **client ID** and **client
+secret** from the client's page.
+
+**5. Allow the caller to request the custom scope.** Creating the resource server (step 2)
+does **not** let any app client use its scope; you must enable it per client. Skipping this
+step makes every token request fail with `invalid_grant`.
+1. *App clients* > `idpkit-caller` > tab **Login pages** > *Managed login pages
+   configuration* > **Edit**.
+2. Under *OAuth 2.0 grant types*, check that **Client credentials** is selected.
+3. Under *Custom scopes*, tick **`mcp/read`**. (Scopes such as `openid` or `email` are
+   for user sign-in and are not offered to machine-to-machine clients.)
+4. **Save changes.**
+
+If `mcp/read` is not listed, the resource server from step 2 is missing or has no scope.
 
 **`.env`**
 
@@ -172,13 +184,13 @@ IDPKIT_COGNITO_SCOPE=mcp/read
 
 **Check**: `idpkit inspect --profile cognito --client 4f8example1clientid2abc --scope mcp/read`
 
-**Expected** (from the docs, until captured): `client_id` names the caller,
-`scope` is `"mcp/read"`, `token_use` is `"access"`, and **there is no `aud`** on a plain
-machine-to-machine token.
+**Expected** (verified 2026-11-22, `fixtures/claims/cognito/client-credentials.json`):
+`client_id` and `sub` name the caller, `scope` is `"mcp/read"`, `token_use` is `"access"`,
+and **there is no `aud`** on a plain machine-to-machine token.
 
 **What to enter in MCP Wizard** (preset *Amazon Cognito — existing user pool*): region +
-pool ID; **allowed clients** = the app client ID. Do not rely on an audience: the token
-has none. (The *create a new user pool* preset makes Terraform build all of this for
+pool ID; **allowed clients** = the app client ID, and/or scope `mcp/read`. Leave **allowed
+audience empty**: the token has no `aud`, so any value rejects every token. (The *create a new user pool* preset makes Terraform build all of this for
 AgentCore.)
 
 **Common errors**
@@ -187,7 +199,7 @@ AgentCore.)
 |---|---|
 | `invalid_client` | wrong client ID/secret, or the client has no secret (recreate it as Machine-to-machine) |
 | `unauthorized_client` | client credentials not enabled on the app client |
-| `invalid_grant` | the scope exists but is not ticked on the app client (*Login pages* > *Custom scopes*) |
+| `invalid_grant` | the scope exists but is not enabled on the app client: do step 5 |
 | `invalid_scope` | no such scope: typo, or the resource server is missing (`mcp/read`, with the slash) |
 | connection error | wrong `IDPKIT_COGNITO_DOMAIN` (copy it from the pool's *Domain* page) |
 
