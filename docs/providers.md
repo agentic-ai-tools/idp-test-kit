@@ -151,6 +151,8 @@ Note the **pool ID**, e.g. `us-east-1_AbC123xyz` (its prefix is the region).
 
 **3. Create a domain.** *Domain* > *Create Cognito domain*, e.g. prefix `idpkit-test-4821`.
 The token endpoint lives on it: `idpkit-test-4821.auth.us-east-1.amazoncognito.com`.
+If the pool already shows a Cognito domain, skip this step and use that one. You do **not**
+need a *custom domain*: that is your own hostname, and it needs a certificate and DNS records.
 
 **4. Create the caller (an "app client").** *App clients* > *Create app client* > application
 type **Machine-to-machine application**, name `idpkit-caller`. Select the custom scope
