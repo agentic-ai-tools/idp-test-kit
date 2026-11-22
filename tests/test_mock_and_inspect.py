@@ -91,3 +91,12 @@ def test_a_key_file_lets_two_processes_share_one_issuer(tmp_path):
 def test_shapes_can_name_the_client_in_several_claims(idp):
     claims = idp.claims_for(load_profile("keycloak").shape, client_id="kc")
     assert (claims["client_id"], claims["azp"]) == ("kc", "kc")
+
+
+def test_clock_skew_is_not_a_bad_signature(idp):
+    # The local clock runs a few seconds behind the IdP: iat/nbf are slightly in the future.
+    soon = int(time.time()) + 10
+    token = idp.mint(load_profile("cognito").shape, iat=soon, nbf=soon)
+    result = inspect_token(token, discovery_url=idp.discovery_url, allow_http=True)
+    assert result.signature_ok is True
+    assert result.problems == []

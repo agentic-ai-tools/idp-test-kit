@@ -78,7 +78,14 @@ def inspect_token(
             token,
             key.key,
             algorithms=ALGORITHMS,
-            options={"verify_aud": False, "verify_exp": False, "verify_iss": False},
+            # Signature only: time claims are checked below, with leeway for clock skew.
+            options={
+                "verify_aud": False,
+                "verify_exp": False,
+                "verify_iss": False,
+                "verify_iat": False,
+                "verify_nbf": False,
+            },
         )
         result.signature_ok = True
     except jwt.InvalidTokenError:
