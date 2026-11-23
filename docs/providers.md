@@ -215,7 +215,22 @@ AgentCore.)
 - Name `MCP server`
 - **Identifier** `https://mcp.example.com`. It is only a label, so it doesn't need to
   resolve. **This identifier is the audience.**
+- **JSON Web Token (JWT) Profile**: keep **Auth0** (the default). It names the caller in
+  `azp`. The other choice, *RFC 9068*, names it in `client_id` instead (see the note below).
+- **JSON Web Token (JWT) Signing Algorithm**: keep **RS256**. Never HS256: validators
+  check tokens against the public keys (JWKS), and HS256 has none.
+- **Application Access Policy** (API *Settings*):
+  - *User-delegated access*: **Per-app authorization** (or *No apps*). This test signs no
+    users in; never pick *All apps*.
+  - *Client access* (machine-to-machine): **Per-app authorization**. *No app allowed*
+    blocks the test (`access_denied`). Step 2 authorizes the one caller.
 - Under *Permissions*, add `mcp.read`.
+
+> **Optional second capture: the RFC 9068 profile.** Auth0's docs say this profile puts
+> the client in `client_id` (not `azp`) and drops `gty`. That matters because AgentCore's
+> *allowed clients* only reads `client_id`. After the default capture, switch the API's
+> profile to *RFC 9068*, delete `.idpkit/tokens/auth0*`, and run
+> `idpkit capture auth0 --name rfc9068-profile`.
 
 **2. Create the caller.** *Applications* > *Applications* > *Create Application* > type
 **Machine to Machine Applications**, name `idpkit-caller`. When asked which API it may call,
