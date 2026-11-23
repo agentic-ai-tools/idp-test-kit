@@ -117,6 +117,13 @@ def inspect(
         raise typer.BadParameter("pass a token or --profile")
     if token is None:
         token, discovery = _token_for(profile or "", env_file, device=device, allow_http=allow_http)
+    if profile and not (aud or client or scope):
+        # Same settings as the MCP Wizard JWT fields: IDPKIT_<P>_ALLOWED_AUDIENCE etc.
+        values = profile_values(profile, load_env(env_file))
+        aud, client, scope = (
+            values.get(key, "").replace(",", " ").split()
+            for key in ("allowed_audience", "allowed_clients", "required_scopes")
+        )
     result = inspect_token(token, discovery_url=discovery, allow_http=allow_http)
     width = max((len(k) for k, _ in claim_rows(result.claims)), default=0)
     for name, value in claim_rows(result.claims):

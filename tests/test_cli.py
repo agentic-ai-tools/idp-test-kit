@@ -112,3 +112,24 @@ def test_main_prints_one_line_errors(monkeypatch, capsys):
     assert exit_info.value.code == 1
     err = capsys.readouterr().err
     assert "error: getaddrinfo failed" in err and ".env" in err
+
+
+def test_inspect_reads_the_requirements_from_env(monkeypatch, tmp_path, idp):
+    from idpkit import cli
+
+    token = idp.mint(load_profile("auth0").shape, client_id="c1", audience="https://api")
+    monkeypatch.setattr(cli, "_token_for", lambda *a, **k: (token, idp.discovery_url))
+    env = tmp_path / ".env"
+    env.write_text(
+        "IDPKIT_AUTH0_ALLOWED_AUDIENCE=https://api\n"
+        "IDPKIT_AUTH0_ALLOWED_CLIENTS=c1, c2\n"
+        "IDPKIT_AUTH0_REQUIRED_SCOPES=nope\n",
+        encoding="utf-8",
+    )
+    args = ["inspect", "--profile", "auth0", "--env-file", str(env), "--allow-http"]
+    from_env = runner.invoke(app, args)
+    assert from_env.exit_code == 0, from_env.output
+    assert "mcp-wizard-0.6: REJECT (403)" in from_env.output  # scope "nope" is missing
+    # Flags win over .env.
+    flags = runner.invoke(app, [*args, "--aud", "https://api"])
+    assert "mcp-wizard-0.6: accept" in flags.output

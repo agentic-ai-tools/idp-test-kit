@@ -46,9 +46,21 @@ Other words you will see:
 cp .env.example .env            # once; then fill in one provider's block
 idpkit discover <discovery URL> # is the provider reachable and well-formed?
 idpkit token <profile>          # can the caller get a token? (cached; hidden)
-idpkit inspect --profile <profile> --aud <audience> --client <client-id> --scope <scope>
+idpkit inspect --profile <profile>  # checks the ALLOWED_*/REQUIRED_* values from .env
 idpkit capture <profile>        # when it looks right: masked fixture for the repo
 ```
+
+`inspect` checks the token against the same three settings you enter in MCP Wizard, read
+from `.env` (space- or comma-separated; leave a line out to skip that check):
+
+| `.env` key | MCP Wizard field |
+|---|---|
+| `IDPKIT_<P>_ALLOWED_AUDIENCE` | Allowed audience |
+| `IDPKIT_<P>_ALLOWED_CLIENTS` | Allowed clients |
+| `IDPKIT_<P>_REQUIRED_SCOPES` | Required scopes |
+
+To try other values once, pass `--aud`, `--client` or `--scope`; flags replace all three
+`.env` values for that run.
 
 No machine tokens on your plan? Add `--device` to `token`, `inspect` or `capture`.
 It shows a link and a code; you approve in a browser and get a *user* token instead
@@ -94,9 +106,10 @@ IDPKIT_KEYCLOAK_BASE_URL=http://127.0.0.1:8180
 IDPKIT_KEYCLOAK_REALM=idpkit
 IDPKIT_KEYCLOAK_CLIENT_ID=idpkit-m2m
 IDPKIT_KEYCLOAK_CLIENT_SECRET=idpkit-local-test-secret
+IDPKIT_KEYCLOAK_ALLOWED_AUDIENCE=api://mcp
 ```
 
-**Check**: `idpkit inspect --profile keycloak --allow-http --aud api://mcp`
+**Check**: `idpkit inspect --profile keycloak --allow-http`
 
 **A correct token contains** (Keycloak 26.4):
 
@@ -180,9 +193,11 @@ IDPKIT_COGNITO_DOMAIN=idpkit-test-4821.auth.us-east-1.amazoncognito.com
 IDPKIT_COGNITO_CLIENT_ID=4f8example1clientid2abc
 IDPKIT_COGNITO_CLIENT_SECRET=...
 IDPKIT_COGNITO_SCOPE=mcp/read
+IDPKIT_COGNITO_ALLOWED_CLIENTS=4f8example1clientid2abc
+IDPKIT_COGNITO_REQUIRED_SCOPES=mcp/read
 ```
 
-**Check**: `idpkit inspect --profile cognito --client 4f8example1clientid2abc --scope mcp/read`
+**Check**: `idpkit inspect --profile cognito`
 
 **Expected** (verified 2026-11-22, `fixtures/claims/cognito/client-credentials.json`):
 `client_id` and `sub` name the caller, `scope` is `"mcp/read"`, `token_use` is `"access"`,
@@ -244,9 +259,11 @@ IDPKIT_AUTH0_DOMAIN=dev-abc123.us.auth0.com
 IDPKIT_AUTH0_CLIENT_ID=Xy7exampleClientId
 IDPKIT_AUTH0_CLIENT_SECRET=...
 IDPKIT_AUTH0_AUDIENCE=https://mcp.example.com
+IDPKIT_AUTH0_ALLOWED_AUDIENCE=https://mcp.example.com
+IDPKIT_AUTH0_REQUIRED_SCOPES=mcp.read
 ```
 
-**Check**: `idpkit inspect --profile auth0 --aud https://mcp.example.com --scope mcp.read`
+**Check**: `idpkit inspect --profile auth0`
 
 **Expected** (verified 2026-11-23, `fixtures/claims/auth0/client-credentials.json`):
 `aud` = your identifier, `azp` = the client ID, `sub` = `<client ID>@clients`,
@@ -299,12 +316,14 @@ IDPKIT_ENTRA_TENANT=11111111-2222-3333-4444-555555555555
 IDPKIT_ENTRA_CLIENT_ID=<caller application (client) ID>
 IDPKIT_ENTRA_CLIENT_SECRET=...
 IDPKIT_ENTRA_SCOPE=api://<api-app-id>/.default
+IDPKIT_ENTRA_ALLOWED_AUDIENCE=<api-app-id>
+IDPKIT_ENTRA_ALLOWED_CLIENTS=<caller application (client) ID>
 ```
 
 The scope for client credentials is always the API's ID URI plus **`/.default`**. It means
 "every application permission granted to me".
 
-**Check**: `idpkit inspect --profile entra --aud <api-app-id> --client <caller-client-id>`
+**Check**: `idpkit inspect --profile entra`
 
 **Expected** (until captured): `iss` = `https://login.microsoftonline.com/<tenant>/v2.0`,
 `aud` = the **API's** client ID (a GUID), `azp` = the **caller's** client ID,
@@ -368,9 +387,11 @@ carries user claims (`uid`, and your login in `sub`).
    IDPKIT_OKTA_AUTH_SERVER=default
    IDPKIT_OKTA_CLIENT_ID=0oaDeviceAppId
    IDPKIT_OKTA_DEVICE_SCOPE=openid mcp.read
+   IDPKIT_OKTA_ALLOWED_AUDIENCE=api://default
+   IDPKIT_OKTA_REQUIRED_SCOPES=mcp.read
    ```
 
-5. **Run** `idpkit inspect --profile okta --device --aud api://default --scope mcp.read`.
+5. **Run** `idpkit inspect --profile okta --device`.
    It prints a link and a code. Open the link, sign in, confirm the code, and the claims
    appear. Then `idpkit capture okta --device --name device-user`.
 
@@ -411,9 +432,12 @@ IDPKIT_OKTA_AUTH_SERVER=default
 IDPKIT_OKTA_CLIENT_ID=0oaExampleClientId
 IDPKIT_OKTA_CLIENT_SECRET=...
 IDPKIT_OKTA_SCOPE=mcp.read
+IDPKIT_OKTA_ALLOWED_AUDIENCE=api://default
+IDPKIT_OKTA_ALLOWED_CLIENTS=0oaExampleClientId
+IDPKIT_OKTA_REQUIRED_SCOPES=mcp.read
 ```
 
-**Check**: `idpkit inspect --profile okta --aud api://default --client 0oaExampleClientId --scope mcp.read`
+**Check**: `idpkit inspect --profile okta`
 
 **Expected** (until captured): `aud` = `api://default`, **`cid`** = the client ID (Okta's own
 claim name, not `client_id` or `azp`), `scp` = `["mcp.read"]`.
