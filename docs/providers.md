@@ -261,6 +261,7 @@ API identifier; scopes `mcp.read` optional. Allowed clients work on the Docker t
 |---|---|
 | `access_denied` … "not authorized to access resource server" | the application was not authorized for the API (step 2), or the audience is mistyped |
 | `invalid_client` | wrong client ID/secret |
+| token has **no `scope` claim** (403 "no allowed scope") | the app is authorized but `mcp.read` is not ticked: API > *Machine to Machine Applications* (or *Application Access*) > `idpkit-caller` > tick `mcp.read` > *Update*. Then delete `.idpkit/tokens/auth0*`: tokens live 24 h and the cache would reuse the old one |
 | `too_many_requests` / quota | monthly M2M quota used up; wait for the reset or reuse cached tokens |
 
 ---
