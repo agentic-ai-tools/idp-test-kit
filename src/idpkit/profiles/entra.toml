@@ -8,11 +8,13 @@ token_url = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
 auth = "post"
 fields = ["tenant", "client_id", "client_secret", "scope"]
 params = { scope = "{scope}" }
-verified = false
+verified = true
+verified_on = "2026-11-23"
 notes = """
-v2 tokens: aud is the API's client ID (GUID), azp names the calling client (no client_id
-claim), and app-only tokens carry application permissions in roles; scp appears only in
-delegated (user) tokens.
+Verified with a real token (fixtures/claims/entra/client-credentials.json): aud is the
+API's client ID as a bare GUID (not api://...), azp names the calling client (no client_id
+claim), sub = oid = the caller's service principal, application permissions are in roles,
+no scp. idtyp is absent unless added as an optional claim. Tokens live about 65 minutes.
 """
 sources = [
   "https://learn.microsoft.com/en-us/entra/identity-platform/access-token-claims-reference",
@@ -24,4 +26,4 @@ client_claim = "azp"
 audience = true
 scope_claim = "roles"
 scope_format = "list"
-extra = { ver = "2.0", idtyp = "app" }
+extra = { ver = "2.0" }

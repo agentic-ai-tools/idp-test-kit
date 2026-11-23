@@ -50,8 +50,15 @@ idpkit inspect --profile <profile>  # checks the ALLOWED_*/REQUIRED_* values fro
 idpkit capture <profile>        # when it looks right: masked fixture for the repo
 ```
 
-`inspect` checks the token against the same three settings you enter in MCP Wizard, read
-from `.env` (space- or comma-separated; leave a line out to skip that check):
+Each provider's `.env` block has two halves:
+- **How `idpkit` gets a token** (`CLIENT_ID`, `CLIENT_SECRET`, `SCOPE`/`AUDIENCE`...): it
+  signs in *as the caller*.
+- **What the server accepts** (`ALLOWED_*`, `REQUIRED_SCOPES`): the values you would enter
+  in MCP Wizard. So the caller's client ID often appears twice, once as `CLIENT_ID` (who
+  signs in) and once in `ALLOWED_CLIENTS` (who is let in).
+
+`inspect` checks the token against those MCP Wizard values
+(space- or comma-separated; leave a line out to skip that check):
 
 | `.env` key | MCP Wizard field |
 |---|---|
@@ -311,23 +318,38 @@ name `MCP server`, single tenant. Then:
 
 **`.env`**
 
+You have two app registrations, so two GUIDs. In the example, the **API** (`MCP server`)
+is `bbbbbbbb-...` and the **caller** (`idpkit-caller`) is `cccccccc-...`. Both come from the
+*Application (client) ID* on each registration's *Overview* page.
+
 ```
-IDPKIT_ENTRA_TENANT=11111111-2222-3333-4444-555555555555
-IDPKIT_ENTRA_CLIENT_ID=<caller application (client) ID>
-IDPKIT_ENTRA_CLIENT_SECRET=...
-IDPKIT_ENTRA_SCOPE=api://<api-app-id>/.default
-IDPKIT_ENTRA_ALLOWED_AUDIENCE=<api-app-id>
-IDPKIT_ENTRA_ALLOWED_CLIENTS=<caller application (client) ID>
+# How idpkit gets a token: it signs in AS the caller, asking FOR the API.
+IDPKIT_ENTRA_TENANT=11111111-2222-3333-4444-555555555555      # Overview > Tenant ID
+IDPKIT_ENTRA_CLIENT_ID=cccccccc-cccc-cccc-cccc-cccccccccccc   # caller's client ID
+IDPKIT_ENTRA_CLIENT_SECRET=...                                # caller's secret value
+IDPKIT_ENTRA_SCOPE=api://bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/.default  # API's ID URI + /.default
+
+# What the server accepts (= the MCP Wizard fields).
+IDPKIT_ENTRA_ALLOWED_AUDIENCE=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb   # API's client ID, NO api://
+IDPKIT_ENTRA_ALLOWED_CLIENTS=cccccccc-cccc-cccc-cccc-cccccccccccc    # caller's client ID again
 ```
 
-The scope for client credentials is always the API's ID URI plus **`/.default`**. It means
-"every application permission granted to me".
+**Why the caller's ID appears twice:** `CLIENT_ID` is who `idpkit` *signs in as*.
+`ALLOWED_CLIENTS` is who the server *lets in*. In this test the caller is `idpkit`, so they
+are the same value. In real use, `ALLOWED_CLIENTS` lists your real callers (agents, apps),
+and `ALLOWED_CLIENTS` is optional: the audience alone already limits tokens to your API.
+
+**Why the API's ID appears in two forms:** you *request* the token with the ID URI
+(`api://<guid>/.default`), but a v2 token's `aud` is the **bare GUID**. Putting
+`api://<guid>` in `ALLOWED_AUDIENCE` rejects every token with 401 "aud does not match".
 
 **Check**: `idpkit inspect --profile entra`
 
-**Expected** (until captured): `iss` = `https://login.microsoftonline.com/<tenant>/v2.0`,
+**Expected** (verified 2026-11-23, `fixtures/claims/entra/client-credentials.json`):
+`iss` = `https://login.microsoftonline.com/<tenant>/v2.0`,
 `aud` = the **API's** client ID (a GUID), `azp` = the **caller's** client ID,
-`roles` = `["mcp.read"]`, `ver` = `"2.0"`, `idtyp` = `"app"`. There is **no `scp`** on app-only
+`roles` = `["mcp.read"]`, `ver` = `"2.0"`, `sub` = `oid` = the caller's service principal.
+There is **no `scp`** on app-only
 tokens.
 
 **What to enter in MCP Wizard** (preset *Microsoft Entra ID*): tenant ID; **allowed
@@ -343,6 +365,7 @@ clients work on Docker (`azp`), not on AgentCore.
 | `AADSTS70011` invalid scope | the scope must end with `/.default` |
 | `AADSTS500011` resource not found | the Application ID URI in the scope is wrong |
 | token has no `roles` | admin consent not granted, or the permission was added as *Delegated* instead of *Application* |
+| 401 "aud does not match" | `ALLOWED_AUDIENCE` has `api://`; use the bare API client ID |
 | `iss` is `sts.windows.net/...` | the API's manifest still asks for v1 tokens (step 1) |
 
 ---
