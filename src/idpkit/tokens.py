@@ -50,8 +50,9 @@ class TokenCache:
 
 
 def _cache_key(profile: Profile, values: dict[str, str]) -> str:
-    # Settings identify the token; the secret is never part of the key or the file name.
-    public = {k: v for k, v in sorted(values.items()) if k != "client_secret"}
+    # Only the request settings identify the token (not ALLOWED_* checks); never the secret.
+    request = {*profile.fields, "device_scope"} - {"client_secret"}
+    public = {k: v for k, v in sorted(values.items()) if k in request}
     digest = hashlib.sha256(json.dumps(public).encode()).hexdigest()[:16]
     return f"{profile.name}-{digest}"
 

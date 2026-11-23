@@ -139,3 +139,18 @@ def test_capture_drops_client_addresses_and_masks_usernames():
 def test_domain_tolerates_a_pasted_url():
     env = {"IDPKIT_COGNITO_DOMAIN": "https://pool.auth.us-east-1.amazoncognito.com/"}
     assert profile_values("cognito", env)["domain"] == "pool.auth.us-east-1.amazoncognito.com"
+
+
+def test_changing_what_the_server_accepts_keeps_the_cached_token(tmp_path):
+    calls: list[httpx.Request] = []
+    cache = TokenCache(tmp_path)
+    values = {"domain": "d", "client_id": "c", "client_secret": "s", "audience": "a"}
+    with httpx.Client(transport=_transport(calls)) as client:
+        request_token(load_profile("auth0"), values, client=client, cache=cache)
+        again = request_token(
+            load_profile("auth0"),
+            {**values, "allowed_audience": "a", "required_scopes": "mcp.read"},
+            client=client,
+            cache=cache,
+        )
+    assert again.from_cache and len(calls) == 1
