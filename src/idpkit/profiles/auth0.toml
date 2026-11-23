@@ -6,11 +6,17 @@ token_url = "https://{domain}/oauth/token"
 auth = "json"
 fields = ["domain", "client_id", "client_secret", "audience"]
 params = { audience = "{audience}" }
-verified = false
+verified = true
+verified_on = "2026-11-23"
 notes = """
-Expected: azp names the client, gty is client-credentials, aud is the API identifier, scope
-is a string (confirm with a captured token). The Free plan allows 1,000 M2M tokens a month:
-idpkit caches tokens until a minute before they expire.
+Verified with a real token (fixtures/claims/auth0/client-credentials.json, default Auth0
+token profile): azp names the client, sub is "<client id>@clients", gty is
+client-credentials, aud is the API identifier, scope is a string. No client_id claim, so
+AgentCore allowed clients cannot match; use the audience. The scope claim is missing
+entirely if the app is authorized but no permission is ticked. Tokens live 24 h.
+Untested: the RFC 9068 token profile (docs: client_id instead of azp, no gty).
+The Free plan allows 1,000 M2M tokens a month: idpkit caches tokens until a minute before
+they expire.
 """
 sources = [
   "https://auth0.com/docs/secure/tokens/access-tokens",
