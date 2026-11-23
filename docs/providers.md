@@ -248,8 +248,9 @@ IDPKIT_AUTH0_AUDIENCE=https://mcp.example.com
 
 **Check**: `idpkit inspect --profile auth0 --aud https://mcp.example.com --scope mcp.read`
 
-**Expected** (until captured): `aud` = your identifier, `azp` = the client ID,
-`gty` = `client-credentials`, `scope` = `"mcp.read"`.
+**Expected** (verified 2026-11-23, `fixtures/claims/auth0/client-credentials.json`):
+`aud` = your identifier, `azp` = the client ID, `sub` = `<client ID>@clients`,
+`gty` = `client-credentials`, `scope` = `"mcp.read"`. There is no `client_id` claim.
 
 **What to enter in MCP Wizard** (preset *Auth0*): tenant domain; **allowed audience** = the
 API identifier; scopes `mcp.read` optional. Allowed clients work on the Docker target
